@@ -165,9 +165,7 @@ def getWriter():
     listOutput = []
     for item in user:
         posts = Posts.query.filter_by(user_id = item.id).all()
-        thumbCount = 0
-        for post in posts:
-            thumbCount = thumbCount + len(post.liker)
+        thumbCount = sum(len(post.liker) for post in posts)
         object = {
             "username":item.username,
             "info":item.post_number,
@@ -199,16 +197,15 @@ def Article():
             }
             comment_list.append(temp)
         comment_list.reverse()
-        if user:
-            likeOrNot = post in user.likes_post
-            return {"postid": post.id, "postTitle": post.title, "postPic": post.image, "postContent": post.content,
-                    "postAuthor": post.author.username, "postTime": post.time, "postThumb": len(post.liker),
-                    "like": likeOrNot, "comment": comment_list}
-        else:
+        if not user:
             return {"postid": post.id, "postTitle": post.title, "postPic": post.image, "postContent": post.content,
                     "postAuthor": post.author.username, "postTime": post.time, "postThumb": len(post.liker),
                     "comment": comment_list}
 
+        likeOrNot = post in user.likes_post
+        return {"postid": post.id, "postTitle": post.title, "postPic": post.image, "postContent": post.content,
+                "postAuthor": post.author.username, "postTime": post.time, "postThumb": len(post.liker),
+                "like": likeOrNot, "comment": comment_list}
     elif request.method == "POST":
         username = request.form["username"]
         user = Users.query.filter_by(username=username).first()
@@ -274,7 +271,7 @@ def userPage():
             "thumb": thumb,
             "comment":len(item.comments)
         }
-        thumbCount = thumbCount + thumb
+        thumbCount += thumb
         articleList.append(object)
     events = Event.query.filter_by(user_id = user.id).order_by(desc(Event.id)).limit(10).all()
     event_list = []
@@ -328,13 +325,11 @@ def follow():
     if follow:
         user_following.followed.append(user_followed)
         event = Event(user_id=user_following.id, content="關注了 %s " % user_followed.username, time=dt_string)
-        db.session.add(event)
-        db.session.commit()
     else:
         user_following.followed.remove(user_followed)
         event = Event(user_id=user_following.id, content="取消關注了 %s " % user_followed.username, time=dt_string)
-        db.session.add(event)
-        db.session.commit()
+    db.session.add(event)
+    db.session.commit()
     db.session.add(user_followed)
     db.session.commit()
     return {"result":follow}
